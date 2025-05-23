@@ -9,6 +9,7 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.kotlinxSerialization)
 }
 
 kotlin {
@@ -55,6 +56,7 @@ kotlin {
         androidMain.dependencies {
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
+            implementation(libs.ktor.client.cio) // Ktor CIO engine for Android
         }
         commonMain.dependencies {
             implementation(compose.runtime)
@@ -65,7 +67,46 @@ kotlin {
             implementation(compose.components.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodel)
             implementation(libs.androidx.lifecycle.runtimeCompose)
+
+            // Ktor
+            implementation(libs.ktor.client.core)
+            implementation(libs.ktor.client.content.negotiation)
+            implementation(libs.ktor.serialization.kotlinx.json)
+
+            // Voyager
+            implementation(libs.voyager.navigator)
+            implementation(libs.voyager.transitions)
+            implementation(libs.voyager.screenModel)
+
+            // Kotlinx Serialization
+            implementation(libs.kotlinx.serialization.json)
+
+            // Coil
+            implementation(libs.coil.compose)
+            implementation(libs.coil.network.ktor)
         }
+        // The following is the corrected structure for platform-specific dependencies.
+
+        // Create an iosMain source set that depends on commonMain
+        val iosMain by creating {
+            dependsOn(sourceSets.getByName("commonMain"))
+            dependencies {
+                implementation(libs.ktor.client.darwin) // Ktor Darwin engine for iOS
+            }
+        }
+        
+        // Make specific iOS target source sets depend on iosMain
+        listOf("iosX64", "iosArm64", "iosSimulatorArm64").forEach { targetName ->
+            sourceSets.getByName("${targetName}Main").dependsOn(iosMain)
+        }
+
+        // wasmJsMain dependencies (should be auto-created by wasmJs target)
+        sourceSets.getByName("wasmJsMain") { // Explicitly get wasmJsMain to add dependencies
+            dependencies {
+                implementation(libs.ktor.client.js) // Ktor JS engine for WasmJs
+            }
+        }
+
         commonTest.dependencies {
             implementation(libs.kotlin.test)
         }

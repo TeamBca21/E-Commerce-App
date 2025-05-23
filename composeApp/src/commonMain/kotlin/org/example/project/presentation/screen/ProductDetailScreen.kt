@@ -25,11 +25,13 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.core.screen.Screen
@@ -39,15 +41,19 @@ import coil3.compose.AsyncImage
 import org.example.project.data.repository.ProductRepository
 import org.example.project.model.ProductDetails
 import org.example.project.presentation.viewmodel.ProductDetailViewModel
-import org.example.project.remote.MockApiService
+import org.example.project.remote.ApiService
+import org.example.project.remote.MockApiService // Will be replaced
+import org.example.project.remote.RemoteApiService
+import org.example.project.remote.createHttpClient
 
 @OptIn(ExperimentalMaterial3Api::class)
 data class ProductDetailScreen(val productId: String) : Screen {
     @Composable
     override fun Content() {
-        // Instantiate dependencies (temporary)
-        val mockApiService = MockApiService()
-        val productRepository = ProductRepository(mockApiService)
+        // Instantiate dependencies using RemoteApiService
+        val httpClient = remember { createHttpClient() }
+        val apiService: ApiService = remember { RemoteApiService(httpClient) }
+        val productRepository = remember { ProductRepository(apiService) }
         val viewModel = rememberScreenModel { ProductDetailViewModel(productRepository, productId) }
         val uiState by viewModel.uiState.collectAsState()
         val navigator = LocalNavigator.currentOrThrow
@@ -81,12 +87,21 @@ data class ProductDetailScreen(val productId: String) : Screen {
                         CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                     }
                     is ProductDetailViewModel.ProductDetailUiState.Error -> {
-                        Text(
-                            text = "Error: ${state.message}",
-                            modifier = Modifier.align(Alignment.Center),
-                            color = MaterialTheme.colorScheme.error
-                        )
-                        // TODO: Add a retry button
+                        Column(
+                            modifier = Modifier.fillMaxSize().padding(16.dp),
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "Error: ${state.message}",
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(onClick = { viewModel.loadProductDetails() }) {
+                                Text("Retry")
+                            }
+                        }
                     }
                     is ProductDetailViewModel.ProductDetailUiState.NotFound -> {
                         Text(
